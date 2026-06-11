@@ -8,171 +8,121 @@ import type { Scan, ScanStatus } from "@/types";
 
 function getStatusBadgeClass(status: ScanStatus): string {
   switch (status) {
-    case "completed":
-      return "badge badge-success";
-    case "failed":
-      return "badge badge-danger";
-    case "pending":
-      return "badge badge-neutral";
-    default:
-      return "badge badge-active";
+    case "completed": return "badge badge-success";
+    case "failed":    return "badge badge-danger";
+    case "pending":   return "badge badge-neutral";
+    default:          return "badge badge-active";
   }
 }
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("fr-FR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
   });
 }
 
-function ScanCard({
-  scan,
-  onDelete,
-}: {
-  scan: Scan;
-  onDelete: (id: string) => void;
-}) {
-  const imageUrls = [
-    scan.image_front_url,
-    scan.image_back_url,
-    scan.image_left_url,
-    scan.image_right_url,
-  ];
+function ScanCard({ scan, onDelete }: { scan: Scan; onDelete: (id: string) => void }) {
+  const imageUrls = [scan.image_front_url, scan.image_back_url, scan.image_left_url, scan.image_right_url];
   const hasImages = imageUrls.some(Boolean);
-  const isProcessing =
-    scan.status !== "completed" && scan.status !== "failed";
+  const isProcessing = scan.status !== "completed" && scan.status !== "failed";
 
   return (
-    <div className="glass-card scan-card animate-fade-in-up">
-      <Link
-        href={`/scan/${scan.id}`}
-        style={{ textDecoration: "none", color: "inherit", display: "block" }}
-      >
-        <div className="scan-card-header">
-          <div>
-            <div className="scan-card-title">{scan.name}</div>
-            <div className="scan-card-date">{formatDate(scan.created_at)}</div>
-          </div>
-          <span className={getStatusBadgeClass(scan.status)}>
-            {isProcessing && (
-              <span
-                className="spinner"
-                style={{ width: 10, height: 10, borderWidth: 1.5 }}
-              />
-            )}
-            {STATUS_LABELS[scan.status]}
-          </span>
-        </div>
-
-        {/* Image thumbnails */}
-        {hasImages && (
-          <div className="scan-card-images">
-            {imageUrls.map((url, i) => (
-              <div key={i}>
-                {url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={url} alt={`Vue ${i + 1}`} />
-                ) : (
-                  <div
-                    style={{
-                      width: "100%",
-                      aspectRatio: "1",
-                      background: "var(--color-bg-surface-hover)",
-                    }}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Result */}
-        {scan.status === "completed" && scan.result && (
-          <div className="scan-card-result">
-            <div className="scan-card-result-count">
-              {scan.result.apple_count}
+    <div className="card-shell scan-card animate-fade-in-up" style={{ cursor: "default" }}>
+      <div className="card-core" style={{ padding: "var(--space-xl)", borderRadius: "calc(var(--radius-xl) - 2px)" }}>
+        <Link
+          href={`/scan/${scan.id}`}
+          style={{ textDecoration: "none", color: "inherit", display: "block" }}
+        >
+          {/* Header */}
+          <div className="scan-card-header">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="scan-card-title">{scan.name}</div>
+              <div className="scan-card-date">{formatDate(scan.created_at)}</div>
             </div>
-            <div>
-              <div className="scan-card-result-label">
-                🍎 Pommes détectées
-              </div>
-              <div
-                style={{
-                  fontSize: "var(--fs-xs)",
-                  color: "var(--color-text-muted)",
-                }}
-              >
-                {scan.result.detected_points.toLocaleString()} points analysés
+            <span className={getStatusBadgeClass(scan.status)}>
+              {isProcessing && (
+                <span className="spinner spinner-sm" style={{ borderTopColor: "var(--color-accent)" }} />
+              )}
+              {STATUS_LABELS[scan.status]}
+            </span>
+          </div>
+
+          {/* Image thumbnails */}
+          {hasImages && (
+            <div className="scan-card-images" style={{ borderRadius: "var(--radius-md)", overflow: "hidden", marginBottom: "var(--space-md)" }}>
+              {imageUrls.map((url, i) => (
+                <div key={i} style={{ aspectRatio: "1", overflow: "hidden", background: "var(--color-bg-surface-3)" }}>
+                  {url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={url} alt={`Vue ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 400ms var(--ease-out-expo)" }} />
+                  ) : (
+                    <div style={{ width: "100%", height: "100%", background: "var(--color-bg-surface-3)" }} />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Result */}
+          {scan.status === "completed" && scan.result && (
+            <div className="scan-card-result">
+              <div className="scan-card-result-count">{scan.result.apple_count}</div>
+              <div>
+                <div className="scan-card-result-label">🍎 Pommes détectées</div>
+                <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: "2px" }}>
+                  {scan.result.detected_points.toLocaleString()} points analysés
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Processing indicator */}
-        {isProcessing && (
-          <div
-            className="scan-card-result"
-            style={{ justifyContent: "center" }}
-          >
-            <span
-              className="spinner"
-              style={{ width: 16, height: 16, borderWidth: 2 }}
-            />
-            <span
-              style={{
-                fontSize: "var(--fs-sm)",
-                color: "var(--color-text-muted)",
-              }}
+          {/* Processing */}
+          {isProcessing && (
+            <div className="scan-card-result" style={{ justifyContent: "center", gap: "var(--space-sm)" }}>
+              <span className="spinner spinner-sm" />
+              <span style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>
+                {STATUS_LABELS[scan.status]}...
+              </span>
+            </div>
+          )}
+
+          {/* Failed */}
+          {scan.status === "failed" && (
+            <div
+              className="scan-card-result"
+              style={{ borderColor: "var(--color-danger-border)", background: "var(--color-danger-bg)" }}
             >
-              {STATUS_LABELS[scan.status]}...
-            </span>
-          </div>
-        )}
+              <span style={{ color: "var(--color-danger)", fontSize: "var(--fs-sm)" }}>
+                ⚠️ {scan.error_message || "Échec du traitement"}
+              </span>
+            </div>
+          )}
+        </Link>
 
-        {/* Failed indicator */}
-        {scan.status === "failed" && (
-          <div
-            className="scan-card-result"
-            style={{
-              borderColor: "rgba(230, 57, 70, 0.2)",
-              background: "rgba(230, 57, 70, 0.05)",
-            }}
-          >
-            <span style={{ color: "var(--color-danger)", fontSize: "var(--fs-sm)" }}>
-              ⚠️ {scan.error_message || "Échec du traitement"}
-            </span>
-          </div>
-        )}
-      </Link>
-
-      {/* Delete button */}
-      <button
-        className="btn btn-ghost"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (confirm("Supprimer ce scan ?")) {
-            onDelete(scan.id);
-          }
-        }}
-        style={{
-          position: "absolute",
-          top: "var(--space-md)",
-          right: "var(--space-md)",
-          fontSize: "var(--fs-xs)",
-          padding: "0.25rem 0.5rem",
-          opacity: 0.5,
-          zIndex: 2,
-        }}
-        title="Supprimer"
-      >
-        🗑️
-      </button>
+        {/* Delete button */}
+        <button
+          className="btn btn-ghost"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (confirm("Supprimer ce scan définitivement ?")) onDelete(scan.id);
+          }}
+          style={{
+            position: "absolute", top: "14px", right: "14px",
+            fontSize: "var(--fs-xs)", padding: "0.25rem 0.5rem",
+            opacity: 0.4, zIndex: 2, borderRadius: "var(--radius-md)",
+            transition: "opacity var(--transition-fast)",
+          }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+          onMouseLeave={e => (e.currentTarget.style.opacity = "0.4")}
+          title="Supprimer"
+          aria-label="Supprimer ce scan"
+        >
+          🗑
+        </button>
+      </div>
     </div>
   );
 }
@@ -189,9 +139,7 @@ export default function DashboardPage() {
       setScans(data.scans);
       setError(null);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Impossible de charger les scans."
-      );
+      setError(err instanceof Error ? err.message : "Impossible de charger les scans.");
     } finally {
       setLoading(false);
     }
@@ -199,13 +147,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadScans();
-    // Auto-refresh every 10s if any scans are processing
     const interval = setInterval(() => {
-      if (
-        scans.some(
-          (s) => s.status !== "completed" && s.status !== "failed"
-        )
-      ) {
+      if (scans.some((s) => s.status !== "completed" && s.status !== "failed")) {
         loadScans();
       }
     }, 10000);
@@ -221,34 +164,35 @@ export default function DashboardPage() {
     }
   };
 
-  const filteredScans =
-    filter === "all" ? scans : scans.filter((s) => s.status === filter);
+  const filteredScans = filter === "all" ? scans : scans.filter((s) => s.status === filter);
 
   const counts = {
     all: scans.length,
     completed: scans.filter((s) => s.status === "completed").length,
     failed: scans.filter((s) => s.status === "failed").length,
-    processing: scans.filter(
-      (s) => s.status !== "completed" && s.status !== "failed"
-    ).length,
+    processing: scans.filter((s) => s.status !== "completed" && s.status !== "failed").length,
   };
+
+  const filterTabs = [
+    { key: "all" as const,       label: "Tous",     count: counts.all },
+    { key: "completed" as const, label: "Terminés", count: counts.completed },
+    { key: "failed" as const,    label: "Échecs",   count: counts.failed },
+  ];
 
   return (
     <div className="container" style={{ paddingBottom: "var(--space-4xl)" }}>
-      <div className="page-header">
+      {/* Page header */}
+      <div className="page-header animate-fade-in">
         <div>
+          <div className="eyebrow" style={{ marginBottom: "var(--space-sm)" }}>
+            <span className="eyebrow-dot" />
+            Vue d&apos;ensemble
+          </div>
           <h1 className="page-title">Dashboard</h1>
-          <p
-            style={{
-              color: "var(--color-text-muted)",
-              fontSize: "var(--fs-sm)",
-              marginTop: "var(--space-xs)",
-            }}
-          >
+          <p style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", marginTop: "6px", fontWeight: 500 }}>
             {counts.all} scan{counts.all !== 1 ? "s" : ""} au total
             {counts.processing > 0 && (
-              <span style={{ color: "var(--color-accent)" }}>
-                {" "}
+              <span style={{ color: "var(--color-accent)", marginLeft: "8px" }}>
                 · {counts.processing} en cours
               </span>
             )}
@@ -256,54 +200,60 @@ export default function DashboardPage() {
         </div>
         <Link href="/scan/new" className="btn btn-primary">
           + Nouveau Scan
+          <span className="btn-icon-trail">↗</span>
         </Link>
       </div>
 
-      {/* Filters */}
+      {/* Filter tabs */}
       <div
         style={{
           display: "flex",
-          gap: "var(--space-sm)",
+          gap: "6px",
           marginBottom: "var(--space-xl)",
-          flexWrap: "wrap",
+          padding: "4px",
+          background: "var(--color-bg-surface)",
+          borderRadius: "var(--radius-full)",
+          width: "fit-content",
+          border: "1px solid var(--color-border-subtle)",
         }}
       >
-        {(
-          [
-            { key: "all" as const, label: "Tous", count: counts.all },
-            {
-              key: "completed" as const,
-              label: "Terminés",
-              count: counts.completed,
-            },
-            { key: "failed" as const, label: "Échecs", count: counts.failed },
-          ] as const
-        ).map((f) => (
+        {filterTabs.map((f) => (
           <button
             key={f.key}
-            className={`btn ${filter === f.key ? "btn-primary" : "btn-ghost"}`}
             onClick={() => setFilter(f.key)}
-            style={{ fontSize: "var(--fs-sm)", padding: "0.4rem 1rem" }}
+            className={filter === f.key ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
+            style={{
+              borderRadius: "var(--radius-full)",
+              transition: "all 250ms var(--ease-out-expo)",
+            }}
+            id={`filter-${f.key}`}
           >
-            {f.label} ({f.count})
+            {f.label}
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "20px",
+                height: "20px",
+                borderRadius: "var(--radius-full)",
+                background: filter === f.key ? "rgba(0,0,0,0.15)" : "var(--color-bg-surface-2)",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 700,
+                lineHeight: 1,
+              }}
+            >
+              {f.count}
+            </span>
           </button>
         ))}
       </div>
 
-      {/* Error */}
+      {/* Error banner */}
       {error && (
-        <div
-          style={{
-            padding: "var(--space-md) var(--space-lg)",
-            background: "rgba(230, 57, 70, 0.1)",
-            border: "1px solid rgba(230, 57, 70, 0.3)",
-            borderRadius: "var(--radius-md)",
-            color: "var(--color-danger)",
-            fontSize: "var(--fs-sm)",
-            marginBottom: "var(--space-xl)",
-          }}
-        >
-          ⚠️ {error}
+        <div className="alert alert-error animate-fade-in" style={{ marginBottom: "var(--space-xl)" }}>
+          <span>⚠</span>
+          <span>{error}</span>
         </div>
       )}
 
@@ -311,16 +261,12 @@ export default function DashboardPage() {
       {loading && (
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "40vh",
-            flexDirection: "column",
-            gap: "var(--space-md)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            minHeight: "40vh", flexDirection: "column", gap: "var(--space-md)",
           }}
         >
           <span className="spinner spinner-lg" />
-          <span style={{ color: "var(--color-text-muted)" }}>
+          <span style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>
             Chargement des scans...
           </span>
         </div>
@@ -331,9 +277,7 @@ export default function DashboardPage() {
         <div className="empty-state animate-fade-in-up">
           <div className="empty-state-icon">🌳</div>
           <h2 className="empty-state-title">
-            {filter === "all"
-              ? "Aucun scan pour le moment"
-              : "Aucun résultat"}
+            {filter === "all" ? "Aucun scan pour le moment" : "Aucun résultat"}
           </h2>
           <p className="empty-state-desc">
             {filter === "all"
@@ -343,6 +287,7 @@ export default function DashboardPage() {
           {filter === "all" && (
             <Link href="/scan/new" className="btn btn-primary btn-lg">
               🚀 Lancer mon premier Scan
+              <span className="btn-icon-trail">↗</span>
             </Link>
           )}
         </div>
@@ -352,7 +297,7 @@ export default function DashboardPage() {
       {!loading && filteredScans.length > 0 && (
         <div className="scan-grid">
           {filteredScans.map((scan, i) => (
-            <div key={scan.id} style={{ animationDelay: `${i * 0.05}s` }}>
+            <div key={scan.id} style={{ animationDelay: `${i * 0.06}s` }}>
               <ScanCard scan={scan} onDelete={handleDelete} />
             </div>
           ))}

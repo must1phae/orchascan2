@@ -35,11 +35,14 @@ export default async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  console.log(`[PROXY] Path: ${request.nextUrl.pathname} | User: ${user ? user.email : 'NOT LOGGED IN'}`);
+
   // Protect /dashboard and /scan routes
   const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard') || 
                            request.nextUrl.pathname.startsWith('/scan');
 
   if (isProtectedRoute && !user) {
+    console.log(`[PROXY] Redirecting to /login because user is not authenticated`);
     // Redirect unauthenticated users to login page
     const url = request.nextUrl.clone();
     url.pathname = '/login';

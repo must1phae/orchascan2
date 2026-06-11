@@ -53,12 +53,15 @@ export default async function RootLayout({
 
 function Navbar({ user }: { user: any }) {
   return (
-    <nav className="navbar">
-      <div className="navbar-inner">
+    <div className="navbar-wrapper">
+      <nav className="navbar">
+        {/* Brand */}
         <a href="/" className="navbar-brand">
-          <span className="navbar-brand-icon">🍎</span>
-          <span>OrchaScan</span>
+          <div className="navbar-brand-icon">🍎</div>
+          <span className="navbar-brand-text">OrchaScan</span>
         </a>
+
+        {/* Nav links */}
         <ul className="navbar-nav">
           {user ? (
             <>
@@ -68,8 +71,20 @@ function Navbar({ user }: { user: any }) {
                 </a>
               </li>
               <li>
-                <a href="/scan/new" className="btn btn-primary" style={{ padding: "0.5rem 1.25rem" }}>
+                <form action="/auth/logout" method="post" style={{ display: 'inline' }}>
+                  <button type="submit" className="navbar-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    Déconnexion
+                  </button>
+                </form>
+              </li>
+              <li>
+                <a
+                  href="/scan/new"
+                  className="btn btn-primary btn-sm"
+                  style={{ borderRadius: "var(--radius-full)" }}
+                >
                   + Nouveau Scan
+                  <span className="btn-icon-trail">↗</span>
                 </a>
               </li>
             </>
@@ -81,14 +96,19 @@ function Navbar({ user }: { user: any }) {
                 </a>
               </li>
               <li>
-                <a href="/register" className="btn btn-primary" style={{ padding: "0.5rem 1.25rem" }}>
-                  S'inscrire
+                <a
+                  href="/register"
+                  className="btn btn-primary btn-sm"
+                  style={{ borderRadius: "var(--radius-full)" }}
+                >
+                  S&apos;inscrire
+                  <span className="btn-icon-trail">→</span>
                 </a>
               </li>
             </>
           )}
         </ul>
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 }
