@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_key: str = ""  # Service role key (for backend operations)
     supabase_anon_key: str = ""
+    supabase_jwt_secret: str = ""  # Project Settings → API → JWT Secret
 
     # Backend
     backend_host: str = "0.0.0.0"
