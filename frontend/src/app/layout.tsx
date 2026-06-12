@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   keywords: "pommes, comptage, 3D, IA, agriculture, verger, Tripo AI, DBSCAN",
 };
 
+import AutoLogout from "@/components/AutoLogout";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -44,6 +46,7 @@ export default async function RootLayout({
   return (
     <html lang="fr">
       <body>
+        <AutoLogout user={user} />
         <Navbar user={user} />
         <main className="main-content">{children}</main>
       </body>

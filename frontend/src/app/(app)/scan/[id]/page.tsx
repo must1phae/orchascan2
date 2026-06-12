@@ -81,6 +81,10 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
           if (data.status !== "completed" && data.status !== "failed") {
             pollScanStatus(resolvedParams.id, (updated) => {
               if (!cancelled) setScan(updated);
+            }).catch((err) => {
+              if (!cancelled) {
+                setError("La connexion au serveur a été perdue pendant l'actualisation.");
+              }
             });
           }
         }
