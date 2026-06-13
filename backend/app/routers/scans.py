@@ -67,10 +67,11 @@ async def create_scan(
     background_tasks: BackgroundTasks,
     name: str = Form(...),
     description: Optional[str] = Form(None),
-    image_front: UploadFile = File(...),
-    image_back: UploadFile = File(...),
-    image_left: UploadFile = File(...),
-    image_right: UploadFile = File(...),
+    image_front: Optional[UploadFile] = File(None),
+    image_back: Optional[UploadFile] = File(None),
+    image_left: Optional[UploadFile] = File(None),
+    image_right: Optional[UploadFile] = File(None),
+    model_obj: Optional[UploadFile] = File(None),
     r_target: int = Form(180),
     g_target: int = Form(20),
     b_target: int = Form(20),
@@ -80,24 +81,49 @@ async def create_scan(
     """
     Create a new scan and launch the processing pipeline.
 
-    Accepts 4 images (front, back, left, right) via multipart form upload.
+    Accepts 4 images (front, back, left, right) OR a 3D model (model_obj) via multipart form upload.
     The pipeline runs in the background.
     """
-    # Validate file types
-    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/jpg"}
-    for img in [image_front, image_back, image_left, image_right]:
-        if img.content_type and img.content_type not in allowed_types:
+    has_images = all([image_front, image_back, image_left, image_right])
+    
+    if not has_images and not model_obj:
+        raise HTTPException(
+            status_code=400,
+            detail="You must provide either 4 images (front, back, left, right) or a 3D model (.obj, .glb).",
+        )
+
+    images = []
+    model_bytes = None
+    model_filename = None
+
+    if model_obj:
+        # Validate 3D model
+        allowed_model_types = {".obj", ".glb", ".gltf"}
+        ext = ""
+        if model_obj.filename and "." in model_obj.filename:
+            ext = "." + model_obj.filename.rsplit(".", 1)[-1].lower()
+            
+        if ext not in allowed_model_types and model_obj.content_type not in {"model/obj", "model/gltf-binary", "application/octet-stream"}:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid file type for {img.filename}: {img.content_type}. "
-                f"Allowed: {', '.join(allowed_types)}",
+                detail=f"Invalid 3D model file type. Allowed extensions: {', '.join(allowed_model_types)}",
             )
-
-    # Read image data
-    images = []
-    for img in [image_front, image_back, image_left, image_right]:
-        data = await img.read()
-        images.append((data, img.filename or "image.jpg"))
+        model_bytes = await model_obj.read()
+        model_filename = model_obj.filename or "model.obj"
+    else:
+        # Validate images
+        allowed_types = {"image/jpeg", "image/png", "image/webp", "image/jpg"}
+        for img in [image_front, image_back, image_left, image_right]:
+            if img.content_type and img.content_type not in allowed_types:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid file type for {img.filename}: {img.content_type}. "
+                    f"Allowed: {', '.join(allowed_types)}",
+                )
+        # Read image data
+        for img in [image_front, image_back, image_left, image_right]:
+            data = await img.read()
+            images.append((data, img.filename or "image.jpg"))
 
     # Create scan record
     user_id = current_user.id
@@ -120,6 +146,8 @@ async def create_scan(
         scan_id=scan_id,
         images=images,
         analysis_params=analysis_params,
+        model_bytes=model_bytes,
+        model_filename=model_filename,
     )
 
     return _format_scan_response(scan)

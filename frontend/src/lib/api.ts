@@ -41,21 +41,26 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 /**
- * Create a new scan by uploading 4 images.
+ * Create a new scan by uploading 4 images OR a 3D model.
  */
 export async function createScan(
   name: string,
   description: string,
-  images: { front: File; back: File; left: File; right: File },
+  source: { type: "images"; images: { front: File; back: File; left: File; right: File } } | { type: "model"; file: File },
   params?: { r_target?: number; g_target?: number; b_target?: number; color_tolerance?: number }
 ): Promise<Scan> {
   const formData = new FormData();
   formData.append("name", name);
   formData.append("description", description);
-  formData.append("image_front", images.front);
-  formData.append("image_back", images.back);
-  formData.append("image_left", images.left);
-  formData.append("image_right", images.right);
+  
+  if (source.type === "images") {
+    formData.append("image_front", source.images.front);
+    formData.append("image_back", source.images.back);
+    formData.append("image_left", source.images.left);
+    formData.append("image_right", source.images.right);
+  } else {
+    formData.append("model_obj", source.file);
+  }
 
   if (params?.r_target !== undefined) formData.append("r_target", String(params.r_target));
   if (params?.g_target !== undefined) formData.append("g_target", String(params.g_target));

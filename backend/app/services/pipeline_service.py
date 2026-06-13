@@ -17,75 +17,84 @@ async def run_scan_pipeline(
     scan_id: str,
     images: list[tuple[bytes, str]],
     analysis_params: AnalysisParams | None = None,
+    model_bytes: bytes | None = None,
+    model_filename: str | None = None,
 ) -> None:
     """
     Execute the full scan pipeline as a background task.
 
     Pipeline stages:
-    1. Upload images to Supabase Storage
-    2. Send images to Tripo AI for 3D model generation
+    1. Upload images to Supabase Storage (if images provided)
+    2. Send images to Tripo AI for 3D model generation (if images provided)
     3. Download and store the 3D model
     4. Analyze the model to count apples
     5. Save results to database
 
     Args:
         scan_id: UUID of the scan record
-        images: List of (image_bytes, filename) tuples (4 images)
+        images: List of (image_bytes, filename) tuples (4 images) or empty if model_bytes provided
         analysis_params: Optional analysis parameters override
+        model_bytes: Direct 3D model bytes to skip stages 1 & 2
+        model_filename: The filename of the provided 3D model
     """
     if analysis_params is None:
         analysis_params = AnalysisParams()
 
     try:
-        # ============================================
-        # Stage 1: Upload images to Supabase Storage
-        # ============================================
-        logger.info(f"[{scan_id}] Stage 1: Uploading images to Supabase Storage...")
-        await supabase_service.update_scan(scan_id, {"status": "uploading"})
+        if not model_bytes:
+            # ============================================
+            # Stage 1: Upload images to Supabase Storage
+            # ============================================
+            logger.info(f"[{scan_id}] Stage 1: Uploading images to Supabase Storage...")
+            await supabase_service.update_scan(scan_id, {"status": "uploading"})
 
-        image_positions = ["front", "back", "left", "right"]
-        image_urls = {}
+            image_positions = ["front", "back", "left", "right"]
+            image_urls = {}
 
-        for i, (image_data, filename) in enumerate(images):
-            position = image_positions[i] if i < len(image_positions) else f"extra_{i}"
-            ext = filename.rsplit(".", 1)[-1] if "." in filename else "jpg"
-            storage_path = f"{scan_id}/{position}.{ext}"
+            for i, (image_data, filename) in enumerate(images):
+                position = image_positions[i] if i < len(image_positions) else f"extra_{i}"
+                ext = filename.rsplit(".", 1)[-1] if "." in filename else "jpg"
+                storage_path = f"{scan_id}/{position}.{ext}"
 
-            # Determine content type
-            content_type = "image/jpeg"
-            if ext.lower() == "png":
-                content_type = "image/png"
-            elif ext.lower() == "webp":
-                content_type = "image/webp"
+                # Determine content type
+                content_type = "image/jpeg"
+                if ext.lower() == "png":
+                    content_type = "image/png"
+                elif ext.lower() == "webp":
+                    content_type = "image/webp"
 
-            url = await supabase_service.upload_file_to_storage(
-                supabase_service.IMAGES_BUCKET,
-                storage_path,
-                image_data,
-                content_type,
+                url = await supabase_service.upload_file_to_storage(
+                    supabase_service.IMAGES_BUCKET,
+                    storage_path,
+                    image_data,
+                    content_type,
+                )
+                image_urls[f"image_{position}_url"] = url
+
+            # Update scan with image URLs
+            await supabase_service.update_scan(scan_id, image_urls)
+            logger.info(f"[{scan_id}] Uploaded {len(images)} images")
+
+            # ============================================
+            # Stage 2: Generate 3D model via Tripo AI
+            # ============================================
+            logger.info(f"[{scan_id}] Stage 2: Generating 3D model via Tripo AI...")
+            await supabase_service.update_scan(scan_id, {"status": "generating_3d"})
+
+            tripo_task_id, generated_model_bytes = await tripo_service.generate_3d_model(images)
+            model_bytes = generated_model_bytes
+
+            # Update with Tripo task ID
+            await supabase_service.update_scan(
+                scan_id, {"tripo_task_id": tripo_task_id}
             )
-            image_urls[f"image_{position}_url"] = url
-
-        # Update scan with image URLs
-        await supabase_service.update_scan(scan_id, image_urls)
-        logger.info(f"[{scan_id}] Uploaded {len(images)} images")
-
-        # ============================================
-        # Stage 2: Generate 3D model via Tripo AI
-        # ============================================
-        logger.info(f"[{scan_id}] Stage 2: Generating 3D model via Tripo AI...")
-        await supabase_service.update_scan(scan_id, {"status": "generating_3d"})
-
-        tripo_task_id, model_bytes = await tripo_service.generate_3d_model(images)
-
-        # Update with Tripo task ID
-        await supabase_service.update_scan(
-            scan_id, {"tripo_task_id": tripo_task_id}
-        )
-        logger.info(
-            f"[{scan_id}] 3D model generated ({len(model_bytes)} bytes), "
-            f"tripo_task={tripo_task_id}"
-        )
+            logger.info(
+                f"[{scan_id}] 3D model generated ({len(model_bytes)} bytes), "
+                f"tripo_task={tripo_task_id}"
+            )
+        else:
+            logger.info(f"[{scan_id}] Skipping Stage 1 & 2: 3D model directly provided.")
+            await supabase_service.update_scan(scan_id, {"status": "generating_3d"})
 
         # ============================================
         # Stage 3: Store model in Supabase Storage
